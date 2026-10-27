@@ -14,6 +14,7 @@ import { createHud } from "./hud";
 import { createExtensionImageLoader } from "./image-loader";
 import { pickElement, removePickerOverlay } from "./picker";
 import { prepareDom } from "./prepare-dom";
+import { bakeLineHeights } from "./text-metrics";
 import {
   applyLayerNames,
   clipboardFromNamedDocument,
@@ -110,12 +111,18 @@ async function convertRoot(
     }),
   });
 
-  return converter.convert({
-    element,
-    width: size.width,
-    height: size.height,
-    name,
-  });
+  // Measure after fonts have settled, separately for every viewport.
+  const restoreLineHeights = bakeLineHeights(element);
+  try {
+    return await converter.convert({
+      element,
+      width: size.width,
+      height: size.height,
+      name,
+    });
+  } finally {
+    restoreLineHeights();
+  }
 }
 
 export function cancelActiveCapture() {

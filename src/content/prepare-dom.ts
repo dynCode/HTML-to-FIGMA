@@ -232,70 +232,6 @@ async function materializeVideos(root: HTMLElement, signal?: AbortSignal) {
 }
 
 /**
- * Figit approximates `line-height: normal` as 1.2×font-size. Bake the browser's
- * real used line box into explicit px so Figma matches the page.
- */
-function bakeLineHeights(root: HTMLElement) {
-  const candidates = root.querySelectorAll<HTMLElement>(
-    "p,h1,h2,h3,h4,h5,h6,li,a,span,button,label,td,th,div,section,article,blockquote,figcaption,dt,dd,em,strong,small,code,pre",
-  );
-
-  for (const el of candidates) {
-    if (el.dataset.html2figmaLh === "1") continue;
-    if (!el.textContent?.trim()) continue;
-
-    const cs = getComputedStyle(el);
-    if (cs.display === "none" || cs.visibility === "hidden") continue;
-
-    let lineHeightPx: number | null = null;
-    if (cs.lineHeight.endsWith("px")) {
-      lineHeightPx = Number.parseFloat(cs.lineHeight);
-    } else {
-      lineHeightPx = measureNormalLineHeight(el, cs);
-    }
-
-    if (!lineHeightPx || !Number.isFinite(lineHeightPx) || lineHeightPx <= 0) {
-      continue;
-    }
-
-    el.style.lineHeight = `${lineHeightPx}px`;
-    el.dataset.html2figmaLh = "1";
-  }
-}
-
-function measureNormalLineHeight(
-  el: HTMLElement,
-  cs: CSSStyleDeclaration,
-): number {
-  const probe = document.createElement("span");
-  probe.textContent = "MgÂy";
-  probe.setAttribute(
-    "style",
-    [
-      "position:absolute",
-      "visibility:hidden",
-      "display:inline",
-      "padding:0",
-      "margin:0",
-      "border:0",
-      `font-family:${cs.fontFamily}`,
-      `font-size:${cs.fontSize}`,
-      `font-weight:${cs.fontWeight}`,
-      `font-style:${cs.fontStyle}`,
-      `letter-spacing:${cs.letterSpacing}`,
-      "line-height:normal",
-      "white-space:nowrap",
-    ].join(";"),
-  );
-  el.appendChild(probe);
-  const height = probe.getBoundingClientRect().height;
-  probe.remove();
-  if (height > 0) return height;
-  const fontSize = Number.parseFloat(cs.fontSize) || 16;
-  return fontSize * 1.2;
-}
-
-/**
  * Figit's stacking sort puts positioned nodes (incl. z-index:auto/0) AFTER
  * in-flow content — so absolute cover images paint on top in Figma even when
  * they were backgrounds on the web. Detect full-bleed absolute images and lift
@@ -373,9 +309,6 @@ export async function prepareDom(options: PrepareOptions): Promise<void> {
   const { root, signal, onProgress } = options;
   assertNotAborted(signal);
   onProgress?.("Preparing page…", 3);
-
-  bakeLineHeights(root);
-  onProgress?.("Baking line heights…", 5);
 
   assertNotAborted(signal);
   onProgress?.("Materializing icons…", 6);
